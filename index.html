@@ -168,6 +168,11 @@ table.roster{border-collapse:separate;border-spacing:0;width:max-content;min-wid
   <ul class="vlist" id="vlist"><li>載入中…</li></ul>
   <div class="acts"><button data-close>關閉</button></div>
 </div></div>
+<div class="modal" id="mWarn"><div class="dlg" style="border-top:6px solid var(--bad)">
+  <h3 style="color:var(--bad)">⚠️ 環保尚未排班</h3>
+  <div id="warnMsg" style="line-height:1.7"></div>
+  <div class="acts"><button class="big b-save" data-close>我知道了</button></div>
+</div></div>
 <div class="toast" id="toast"></div>
 
 <script id="core">
@@ -405,6 +410,7 @@ async function loadMonth(){
   raymondSrc=ray.src;
   const raymondOff=ray.off||(data&&data.raymondOff)||null;
   if(ray.src!=='env') notes.push({cls:'info',t: data&&data.raymondOff ? '📌 ENV E-System 目前讀不到 Raymond 這個月的班表，先用存檔時記錄的版本。' : '📌 ENV E-System 還沒有 Raymond 這個月的班表，先假設他「週一～六上班、週日休」。等環保組排好之後重新整理，Becky 的檢查就會照實際班表。'});
+  if(ray.src!=='env') showEnvWarn(ray.src, !!(data&&data.raymondOff));
   ctx=makeCtx(cur.y,cur.m,{raymondOff:raymondOff||undefined,prevStreak,holidays:data?data.holidays:undefined});
   ctx.defaultHol=makeCtx(cur.y,cur.m).hol;
   if(data){ saved=clone(data); S=clone(data.cells); meta={version:res.version,savedAt:res.savedAt,savedBy:res.savedBy}; }
@@ -415,6 +421,15 @@ async function loadMonth(){
   render();
 }
 
+function showEnvWarn(src,hasSaved){
+  const ym=`${cur.y} 年 ${cur.m} 月`;
+  $('warnMsg').innerHTML=(src==='fail'
+    ? `目前連不上 ENV E-System，讀不到環保組 Raymond <b>${ym}</b> 的班表。`
+    : `ENV E-System 裡還沒有環保組 Raymond <b>${ym}</b> 的班表。`)
+    +'<br><br>Becky 要配合 Raymond 上班，所以這個月 Becky 的班'+(hasSaved?'先照<b>上次存檔時記錄的 Raymond 班表</b>。':'先假設 Raymond <b>週一～六上班、週日休</b>。')
+    +'<br>請先跟環保組確認班表；等 ENV 排好之後重新整理網頁，再檢查 Becky 的班是否需要調整。';
+  $('mWarn').classList.add('on');
+}
 const chip=c=>`<span class="chip s-${c}">${SHIFTS[c].label}</span>`;
 $('legend').innerHTML=Object.keys(SHIFTS).map(k=>`${chip(k)} <span>${SHIFTS[k].name}</span>`).join('')
   +`<span class="chip" style="background:var(--we);color:var(--muted)">六日</span><span class="chip" style="background:var(--hol);color:var(--holInk)">國定</span>`;
@@ -485,6 +500,7 @@ document.addEventListener('click',()=>pop.style.display='none');
 $('btnAuto').onclick=()=>{
   const has=PEOPLE.some(p=>S[p.id].some(v=>v!=='O'));
   if(has&&!confirm('自動排班會把畫面上這個月的班全部換成系統建議版本。\n（還沒按存檔前，雲端上的舊班表不會被改到）\n\n確定要自動排班嗎？')) return;
+  if(raymondSrc!=='env'&&!confirm('⚠️ 環保尚未排班：ENV E-System 沒有 Raymond 這個月的班表，Becky 的班會先用假設的 Raymond 班表來排。\n\n還是要先自動排班嗎？')) return;
   S=suggest(ctx); render(); toast('⚡ 已產生建議班表，確認沒問題後記得按「💾 存檔」');
 };
 $('btnDiscard').onclick=()=>{
