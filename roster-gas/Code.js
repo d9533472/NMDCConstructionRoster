@@ -8,6 +8,23 @@
 const CUR = '目前班表';
 const HIST = '歷史版本';
 const HEAD = ['月份', '版本', '存檔時間', '存檔人', '備註', 'JSON'];
+const CFG = '設定';
+
+/** 人員顯示名稱（全月份共用）存在「設定」工作表 A1:B1 */
+function getNames_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CFG);
+  if (!sh) return null;
+  const v = sh.getRange(1, 2).getValue();
+  try { return v ? JSON.parse(v) : null; } catch (e) { return null; }
+}
+
+function setNames_(names) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(CFG) || ss.insertSheet(CFG);
+  const clean = {};
+  Object.keys(names || {}).forEach(k => { clean[String(k).slice(0, 20)] = String(names[k]).slice(0, 20); });
+  sh.getRange(1, 1, 1, 2).setValues([['人員名稱', JSON.stringify(clean)]]);
+}
 
 function setup() {
   sheet_(CUR); sheet_(HIST);
@@ -64,7 +81,7 @@ function doGet(e) {
   try {
     if (p.action === 'get') {
       const c = current_(p.month);
-      return json_({ ok: true, found: !!c, version: c ? c.version : 0, savedAt: c ? c.savedAt : '', savedBy: c ? c.savedBy : '', note: c ? c.note : '', data: c ? JSON.parse(c.json) : null });
+      return json_({ ok: true, names: getNames_(), found: !!c, version: c ? c.version : 0, savedAt: c ? c.savedAt : '', savedBy: c ? c.savedBy : '', note: c ? c.note : '', data: c ? JSON.parse(c.json) : null });
     }
     if (p.action === 'history') {
       const list = rowsFor_(sheet_(HIST), p.month).reverse().slice(0, 50)
@@ -105,6 +122,7 @@ function doPost(e) {
     if (cur) cs.getRange(cur.row, 1, 1, HEAD.length).setValues([row]);
     else cs.appendRow(row);
     sheet_(HIST).appendRow(row);
+    if (b.names && typeof b.names === 'object') setNames_(b.names);
     if (Array.isArray(b.grid)) writeGrid_(month, b.grid, v, now, by);
     return json_({ ok: true, version: v, savedAt: now.toISOString(), savedBy: by });
   } catch (err) {
