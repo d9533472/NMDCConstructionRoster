@@ -197,6 +197,8 @@ const PEOPLE=[
 ];
 // 新工程師：到職日、第二週起可排 07／19、第三週起可支援晚班
 const NE_START='2026-12-01', NE_EARLY_FROM='2026-12-07', NE_NIGHT_FROM='2026-12-14';
+// 例外：12/5 新工程師提前上 08–19，讓 Hunter 可以六休一（已確認）
+const NE_LATE_OK=['2026-12-05'];
 // 固定日期國定假日（農曆節日每年不同，請在畫面上點日期加）
 const FIXED_HOL={'01-01':'元旦','02-28':'和平紀念日','04-04':'兒童節','05-01':'勞動節','09-28':'教師節','10-10':'國慶日','10-25':'光復節','12-25':'行憲紀念日'};
 // 2026-12 前無資料時，11/30 的連續上班天數
@@ -218,6 +220,7 @@ const isWeekday=(c,d)=>!isRest(c,d);
 const raymondWorks=(c,d)=>!c.raymondOff.includes(d);
 const neEmployed=(c,d)=>ds(c,d)>=NE_START;
 const neEarlyOK=(c,d)=>ds(c,d)>=NE_EARLY_FROM;
+const neLateEx=(c,d)=>NE_LATE_OK.includes(ds(c,d));
 PEOPLE.forEach(p=>p.defName=p.name);
 const P=id=>PEOPLE.find(p=>p.id===id).name;
 const blank=c=>{const S={};PEOPLE.forEach(p=>S[p.id]=Array(c.nd+1).fill('O'));return S;};
@@ -241,7 +244,7 @@ function suggest(c){
     // Hunter：平日 07 到班（輪到收尾 07–19）；週日 07–19；新工程師還不能顧週六時也上週六
     //   國定假日不預排，需要時由補洞加入（會檢查六休一）
     if(wk) S.hunter[d]= closer==='hunter'?'A':'E';
-    else if(!isHol(c,d)&&(w===0||(w===6&&!early))) S.hunter[d]='A';
+    else if(!isHol(c,d)&&(w===0||(w===6&&!early&&!neLateEx(c,d)))) S.hunter[d]='A';
     // YOYO：平日 08–17，輪到收尾 08–19
     if(wk) S.yoyo[d]= closer==='yoyo'?'L':'B';
     // Becky：環保班表上班日上 08–17
@@ -250,7 +253,7 @@ function suggest(c){
     if(w!==3) S.mandeep[d]= isRest(c,d)?'A':'B';
     // 新工程師：只上白班。第一週平日 08–17；之後一～四（輪到收尾 08–19），週六 08–19
     if(emp){
-      if(!early){ if(wk) S.newe[d]='B'; }
+      if(!early){ if(wk) S.newe[d]='B'; else if(neLateEx(c,d)) S.newe[d]='L'; }
       else if(wk&&w>=1&&w<=4) S.newe[d]= closer==='newe'?'L':'B';
       else if(w===6&&!isHol(c,d)) S.newe[d]='L';
     }
@@ -325,7 +328,7 @@ function personIssues(S,c,p){
     }
     if(p.id==='newe'){
       if(!neEmployed(c,d)&&s!=='O') bad(`${p.name} ${D(d)} 還沒到職`,d);
-      else if(!neEarlyOK(c,d)&&s!=='O'&&s!=='B') bad(`${p.name} ${NE_EARLY_FROM.slice(5).replace('-','/')} 前只排 08–17（${D(d)}）`,d);
+      else if(!neEarlyOK(c,d)&&s!=='O'&&s!=='B'&&!(s==='L'&&neLateEx(c,d))) bad(`${p.name} ${NE_EARLY_FROM.slice(5).replace('-','/')} 前只排 08–17（${D(d)}）`,d);
       if(s==='N'&&ds(c,d)<NE_NIGHT_FROM) bad(`${p.name} ${D(d)} 還不能上晚班`,d);
       if(s==='N') warn(`${p.name} ${D(d)} 排晚班（目前建議只上白班）`,d);
       if(s!=='O'&&s!=='N'&&!twCover(S,c,d,'m','newe')) bad(`${p.name} ${D(d)} 白天沒有其他台灣籍同事`,d);
