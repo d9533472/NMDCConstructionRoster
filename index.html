@@ -306,7 +306,8 @@ function personStats(S,c,p){
     const code=S[p.id][d], s=SHIFTS[code];
     if(code==='O'){off++;run=0;continue;}
     work++; run++; maxRun=Math.max(maxRun,run);
-    if(isRest(c,d)) otRest+=s.hours; else {normal+=s.hours-s.wdOT; otWd+=s.wdOT;}
+    // 外籍合約每天都上班：每天都是 8 小時正常工時，超過才算加班（不分平日假日）
+    if(isRest(c,d)&&p.nat!=='FW') otRest+=s.hours; else {normal+=s.hours-s.wdOT; otWd+=s.wdOT;}
   }
   return {work,off,normal,otWd,otRest,ot:otWd+otRest,total:normal+otWd+otRest,maxRun};
 }
@@ -480,8 +481,10 @@ function renderRules(){
      `${N} works day shifts only, always with another Taiwanese colleague on site.`],
     ['平日正常上班時間為 08–17（8 小時）。超出的時段算加班：07–17 加 1 小時、08–19 加 2 小時；12 小時班（07–19、19–07）算 8 + 4。',
      'Regular weekday hours are 08–17 (8 h). Extra time is overtime: 07–17 = +1 h, 08–19 = +2 h; 12-hour shifts (07–19, 19–07) = 8 + 4.'],
-    ['週六、週日和國定假日上班，整個班都算加班。晚班算在上班開始那一天。',
-     'Work on Saturdays, Sundays and public holidays counts entirely as overtime. A night shift counts toward the day it starts.'],
+    ['台灣籍週六、週日和國定假日上班，整個班都算加班。晚班算在上班開始那一天。',
+     'For Taiwanese staff, work on Saturdays, Sundays and public holidays counts entirely as overtime. A night shift counts toward the day it starts.'],
+    ['外籍合約每天都要上班，所以不分平日、假日，每天都是 8 小時正常工時，超過 8 小時的部分才算加班（12 小時班 = 8 + 4）。',
+     'Foreign workers are contracted to work every day, so every day (weekday or not) has 8 regular hours; only time beyond 8 hours is overtime (12-hour shift = 8 + 4).'],
     ['台灣籍不可連續上班 7 天（六休一），會接著上個月底的天數一起算。外籍不受此限制。',
      'Taiwanese staff may not work 7 days in a row (at least 1 day off in 7), including days carried over from the end of last month. Foreign workers are exempt.'],
     ['國定假日已預先帶入固定日期的節日。農曆節日（春節、端午、中秋）和補假，請點日期自己設定。',
@@ -523,8 +526,8 @@ function render(){
   });
   $('roster').innerHTML=h+'</tbody>';
 
-  const heads=T(['姓名','上班天數','休假天數','正常工時','平日加班','休息日/國定加班','加班合計','總工時','上月底連續','最長連續上班'],
-    ['Name','Work days','Days off','Regular hrs','Weekday OT','Rest day/Holiday OT','Total OT','Total hrs','Streak from last month','Longest streak']);
+  const heads=T(['姓名','上班天數','休假天數','正常工時','超過 8 小時加班','休息日/國定加班','加班合計','總工時','上月底連續','最長連續上班'],
+    ['Name','Work days','Days off','Regular hrs','OT over 8 h','Rest day/Holiday OT','Total OT','Total hrs','Streak from last month','Longest streak']);
   const dd=n=>T(`${n} 天`,`${n} d`);
   let t='<thead><tr>'+heads.map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';
   PEOPLE.forEach(p=>{const s=personStats(S,c,p);
